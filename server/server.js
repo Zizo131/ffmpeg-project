@@ -12,8 +12,12 @@ const app = express();
 const port = Number(process.env.PORT) || 3000;
 const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 const maxDuration = Number(process.env.MAX_DURATION_SECONDS) || 900;
-const configuredYtdlpPath = process.env.YTDLP_PATH || "bin/yt-dlp";
+const infoCacheTtl = 60 * 1000;
+const infoCache = new Map();
+const configuredYtdlpPath = process.env.YTDLP_PATH
+  || (process.platform === "win32" ? "bin/yt-dlp.exe" : "bin/yt-dlp");
 const ytdlpPath = resolve(__dirname, configuredYtdlpPath);
+const clientDistPath = resolve(__dirname, "../client/dist");
 
 app.use(cors({ origin: frontendUrl }));
 app.use(express.json());
@@ -91,11 +95,18 @@ function runYtdlp(args) {
 }
 
 async function getVideoInfo(url) {
+  const cached = infoCache.get(url);
+  if (cached && Date.now() - cached.createdAt < infoCacheTtl) {
+    return cached.info;
+  }
+
   const output = await runYtdlp([
     "--dump-single-json",
     "--no-playlist",
     "--no-warnings",
     "--skip-download",
+    "--socket-timeout", "10",
+    "--retries", "0",
     url
   ]);
   let info;
@@ -108,12 +119,43 @@ async function getVideoInfo(url) {
   if (!Number.isFinite(info.duration) || info.duration > maxDuration) {
     throw new Error(`La vidéo doit durer ${Math.floor(maxDuration / 60)} minutes maximum.`);
   }
-  return {
+  const result = {
     title: info.title || "Vidéo YouTube",
     thumbnail: info.thumbnail || null,
     duration: info.duration,
     channel: info.channel || info.uploader || "Chaîne inconnue"
   };
+  infoCache.set(url, { info: result, createdAt: Date.now() });
+  return result;
+}
+
+async function getSuggestions(query) {
+  const output = await runYtdlp([
+    "--flat-playlist",
+    "--dump-single-json",
+    "--no-warnings",
+    "--playlist-end", "6",
+    "--socket-timeout", "10",
+    "--retries", "0",
+    `ytsearch6:${query}`
+  ]);
+  let result;
+  try {
+    result = JSON.parse(output);
+  } catch {
+    throw new Error("Réponse inattendue de yt-dlp.");
+  }
+
+  return (result.entries || [])
+    .filter((entry) => entry.id && entry.title)
+    .map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      thumbnail: entry.thumbnail || `https://i.ytimg.com/vi/${entry.id}/hqdefault.jpg`,
+      duration: Number.isFinite(entry.duration) ? entry.duration : null,
+      channel: entry.channel || entry.uploader || "Chaîne YouTube",
+      url: entry.webpage_url || `https://www.youtube.com/watch?v=${entry.id}`
+    }));
 }
 
 function sendApiError(response, error) {
@@ -130,6 +172,19 @@ app.get("/api/info", async (request, response) => {
   }
   try {
     response.json(await getVideoInfo(url));
+  } catch (error) {
+    sendApiError(response, error);
+  }
+});
+
+app.get("/api/suggestions", async (request, response) => {
+  const query = typeof request.query.q === "string" ? request.query.q.trim() : "";
+  if (query.length < 2 || query.length > 200) {
+    response.status(400).json({ error: "Le titre doit contenir entre 2 et 200 caractères." });
+    return;
+  }
+  try {
+    response.json({ suggestions: await getSuggestions(query) });
   } catch (error) {
     sendApiError(response, error);
   }
@@ -198,6 +253,13 @@ app.get("/api/download", async (request, response) => {
   ytdlp.on("error", stopChildren);
   ffmpeg.on("error", stopChildren);
 });
+
+if (existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+  app.get("*", (_request, response) => {
+    response.sendFile(resolve(clientDistPath, "index.html"));
+  });
+}
 
 app.use((error, _request, response, _next) => {
   if (!response.headersSent) response.status(500).json({ error: "Erreur interne du serveur." });

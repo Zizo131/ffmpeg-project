@@ -3,10 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>YouTube MP3 Converter</title>
+    <meta name="description" content="Zitube — Convertisseur audio simple, rapide et gratuit." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Zitube – Convertisseur audio</title>
   </head>
   <body class="bg-slate-950 text-slate-100">
     <div id="root"></div>
+    <script>
+      if (window.location.protocol === "file:") {
+        const root = document.getElementById("root");
+        if (root) {
+          root.innerHTML = `
+            <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background:#020617;color:#e2e8f0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;">
+              <div style="max-width:640px;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:1.25rem;">
+                <h1 style="margin:0 0 .75rem 0;font-size:1.25rem;font-weight:700;">L'application ne peut pas être ouverte en file://</h1>
+                <p style="margin:0 0 .75rem 0;line-height:1.5;">
+                  Lance le projet avec Vite, puis ouvre l'URL locale affichée dans le terminal.
+                </p>
+                <pre style="margin:0;padding:.75rem;background:#020617;border:1px solid #1e293b;border-radius:8px;overflow:auto;">cd client
+npm install
+npm run dev</pre>
+              </div>
+            </div>
+          `;
+        }
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

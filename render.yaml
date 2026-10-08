@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: zitube
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: FRONTEND_URL
+        sync: false
+      - key: MAX_DURATION_SECONDS
+        value: 900
