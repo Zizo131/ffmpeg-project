@@ -10,6 +10,15 @@ import Suggestions from "./components/Suggestions";
 import Toast from "./components/Toast";
 import UrlInput from "./components/UrlInput";
 
+function safeDownloadName(title) {
+  return String(title || "audio-youtube")
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[. ]+$/, "")
+    .slice(0, 180) || "audio-youtube";
+}
+
 export default function App() {
   const [url, setUrl] = useState("");
   const [info, setInfo] = useState(null);
@@ -55,7 +64,7 @@ export default function App() {
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `${info?.title || "audio-youtube"}.mp3`;
+      link.download = `${safeDownloadName(info?.title)}.mp3`;
       link.click();
       URL.revokeObjectURL(blobUrl);
       setDownloaded(true);
