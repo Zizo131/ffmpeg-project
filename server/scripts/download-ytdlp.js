@@ -6,7 +6,9 @@ import https from "node:https";
 
 const root = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const binDir = resolve(root, "bin");
-const destination = resolve(binDir, "yt-dlp");
+const isWindows = process.platform === "win32";
+const assetName = isWindows ? "yt-dlp.exe" : "yt-dlp_linux";
+const destination = resolve(binDir, isWindows ? "yt-dlp.exe" : "yt-dlp");
 mkdirSync(binDir, { recursive: true });
 
 const download = (url, target) => new Promise((resolvePromise, reject) => {
@@ -23,6 +25,6 @@ const download = (url, target) => new Promise((resolvePromise, reject) => {
   }).on("error", reject);
 });
 
-await download("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux", destination);
-chmodSync(destination, 0o755);
+await download(`https://github.com/yt-dlp/yt-dlp/releases/latest/download/${assetName}`, destination);
+if (!isWindows) chmodSync(destination, 0o755);
 console.log(`yt-dlp installé dans ${destination}`);

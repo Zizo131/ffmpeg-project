@@ -31,6 +31,8 @@ yarn-error.log*
 # Binary
 bin/yt-dlp
 bin/*.exe
+server/bin/yt-dlp
+server/bin/yt-dlp.exe
 
 # OS
 Thumbs.db

@@ -9,6 +9,15 @@ export async function fetchVideoInfo(url) {
   return response.json();
 }
 
+export async function fetchSuggestions(title) {
+  const response = await fetch(`${apiBase}/suggestions?${new URLSearchParams({ q: title })}`);
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({ error: "Suggestions indisponibles" }));
+    throw new Error(error);
+  }
+  return response.json();
+}
+
 export async function downloadMP3(url, quality) {
   const params = new URLSearchParams({ url, quality });
   const response = await fetch(`${apiBase}/download?${params}`);
